@@ -1,0 +1,16 @@
+# --- LangChain Core & Ecosystem ---
+langchain
+langchain-community
+langgraph
+
+# --- LLM Providers & Integrations ---
+langchain-openai        # For OpenAI models (GPT-4o, etc.)
+langchain-openrouter    # For OpenRouter routing
+langchain-google-genai  # For Gemini models
+langchain-groq          # For Groq cloud inference
+langchain-ollama        # For running local models via Ollama
+
+# --- API Web Server Framework ---
+fastapi[all]            # FastAPI including standard dependencies (pydantic, email-validator, etc.)
+uvicorn                 # ASGI server to run the FastAPI app
+python-dotenv

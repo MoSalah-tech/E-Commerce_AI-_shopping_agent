@@ -1,7 +1,13 @@
+import warnings
+from pydantic import BaseModel,Field
+from typing import List, Optional,Annotated
 from langchain.chat_models import init_chat_model
+from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
+from langgraph.graph import StateGraph
 import os
 from dotenv import load_dotenv
+from prompts import PLANNER_AGENT 
 
 load_dotenv()
 
@@ -10,28 +16,24 @@ api_key=os.getenv("GROQ_API_KEY")
 
 
 
-from langchain.chat_models import init_chat_model
 
-model = init_chat_model(
-    "groq:groq/compound",
-    temperature=0.5,
+
+model = ChatGroq(
+    api_key=api_key,
+    model="groq/compound",
+    temperature=0.2,
    
 )
 
 
-SINGLE_AGENT_SYSTEM = """You are a helpful AI.
-Task: Provide a well-reasoned recommendation to the user question.
-Rules:
-- Make your best effort without browsing the web.
-- Be structured: Summary, Pros, Cons, Recommendation, Risks, Confidence (0-100).
-"""
+
 
 def single_agent_answer(question: str) -> str:
     msgs = [
-        SystemMessage(content=SINGLE_AGENT_SYSTEM),
+        SystemMessage(content=PLANNER_AGENT),
         HumanMessage(content=question),
     ]
     return model.invoke(msgs).content
 
-question = "Should a startup use open-source LLMs or closed models in 2026? Consider cost, speed, privacy, and reliability."
+question = "i want to buy a pizza and a diet coke , and I have a budget of $50."
 print(single_agent_answer(question))

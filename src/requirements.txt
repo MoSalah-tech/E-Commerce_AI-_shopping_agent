@@ -10,7 +10,15 @@ langchain-google-genai  # For Gemini models
 langchain-groq          # For Groq cloud inference
 langchain-ollama        # For running local models via Ollama
 
+
+# --- pytorch & cuda ---
+
+# torch == 2.5.1
+# torchvision == 0.20.1
+# torchaudio == 2.5.1
+# nvidia-cuda-runtime-cu11  # Adjust version as needed
+
 # --- API Web Server Framework ---
-fastapi[all]            # FastAPI including standard dependencies (pydantic, email-validator, etc.)
+fastapi[all]==0.100.0            # FastAPI including standard dependencies (pydantic, email-validator, etc.)
 uvicorn                 # ASGI server to run the FastAPI app
 python-dotenv

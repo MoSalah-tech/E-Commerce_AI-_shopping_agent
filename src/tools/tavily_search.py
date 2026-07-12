@@ -16,36 +16,36 @@ client = TavilyClient(
 
 # test it
 #################################
-response = client.search(
-    query="find me a place so i can get a pizza and a diet coke under $50",
-    max_results=3
-)
+# response = client.search(
+#     query="find me a places to buy a new iphone and a jacket , and I have a budget of $5000.",
+#     max_results=3
+# )
 
-print(response)
+# print(response)
 
 ####################################
 
 
 
-# def tavily_search(query):
-#     response = client.search(
-#         query=query,
-#         max_results=5   
-#     )
+def tavily_search(query):
+    response = client.search(
+        query=query,
+        max_results=5   
+    )
 
-#     results = []
+    results = []
 
-#     for i, r in enumerate(response["results"], 1):
-#         title   = r.get("title", "Unknown")
-#         url     = r.get("url", "")
-#         snippet = r.get("content", "").strip()
-#         # Keep only the first 300 characters to avoid wall-of-text
-#         if len(snippet) > 300:
-#             snippet = snippet[:300].rsplit(" ", 1)[0] + "..."
+    for i, r in enumerate(response["results"], 1):
+        title   = r.get("title", "Unknown")
+        url     = r.get("url", "")
+        snippet = r.get("content", "").strip()
+        # Keep only the first 300 characters to avoid wall-of-text
+        if len(snippet) > 300:
+            snippet = snippet[:300].rsplit(" ", 1)[0] + "..."
 
-#         results.append(f"{i}. **{title}**\n   {url}\n   {snippet}")
+        results.append(f"{i}. **{title}**\n   {url}\n   {snippet}")
 
-#     return "\n\n".join(results)
+    return "\n\n".join(results)
     
     
     

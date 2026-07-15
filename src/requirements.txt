@@ -10,6 +10,10 @@ langchain-google-genai  # For Gemini models
 langchain-groq          # For Groq cloud inference
 langchain-ollama        # For running local models via Ollama
 
+# --- Serach Tools for web search ---
+tavily-python
+langchain-tavily # this one was used 
+google-search-results # used for serpAPI which is better for shopping search on the web 
 
 # --- pytorch & cuda ---
 

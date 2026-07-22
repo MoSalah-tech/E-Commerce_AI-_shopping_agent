@@ -2,14 +2,15 @@ import os
 import sys
 import asyncio
 
-if sys.platform == "win32":     # new
-    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())  # new
-
-
+# Windows fix: psycopg's async mode requires the Selector event loop,
+# but asyncio.run() defaults to Proactor on Windows. Must be set before
+# any event loop is created.
+if sys.platform == "win32":
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 from dotenv import load_dotenv
 from pydantic import BaseModel, Field
-from typing import Optional, TypedDict, Dict, Any, List
+from typing import Optional, TypedDict, Dict, Any, List, Annotated
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
 from Serpapi import shopping_search
@@ -26,7 +27,7 @@ load_dotenv()
 
 llm_api_key = os.getenv("GROQ_API_KEY")
 langsmith_api_key = os.getenv("LANGSMITH_API_KEY")
-postgres_url = os.getenv("POSTGRES_URL")
+postgres_uri = os.getenv("POSTGRES_URI") or os.getenv("POSTGRES_URL")
 
 os.environ["LANGCHAIN_PROJECT"] = os.getenv("LANGCHAIN_PROJECT", "Agentic-AI-Proj")
 os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
@@ -36,9 +37,11 @@ print("Project:", os.environ["LANGCHAIN_PROJECT"])
 
 # __________________ Agent State Definition ______________________
 
+import operator
+
 class AgentState(TypedDict):
     user_message: str
-    chat_history: List[Dict[str, str]]
+    chat_history: Annotated[List[Dict[str, str]], operator.add]
     planner: Optional[Dict[str, Any]]
     search_results: List[Dict]
     final_answer: Optional[str]
@@ -55,7 +58,7 @@ class Planner(BaseModel):
 class Product(BaseModel):
     name: str = Field(..., description="Name/title of the product as listed by the seller.")
     price: Optional[str] = Field(None, description="Price of the product, if available.")
-    purchase_link: str = Field(..., description="Direct URL where the user can buy this exact product (not a homepage or search page).")
+    purchase_link: Optional[str] = Field(None, description="Direct URL where the user can buy this exact product (not a homepage or search page). Use null if no direct purchase link was found.")
     source: Optional[str] = Field(None, description="Name of the retailer/website selling the product.")
     description: Optional[str] = Field(None, description="Short one-sentence description of the product.")
 
@@ -68,7 +71,7 @@ class SearchOutput(BaseModel):
 class Recommendation(BaseModel):
     product_name: str = Field(..., description="The recommended product.")
     reason: str = Field(..., description="Why this product was chosen.")
-    purchase_link: str = Field(..., description="Direct purchase link.")
+    purchase_link: Optional[str] = Field(None, description="Direct purchase link. Use null if no direct purchase link was found.")
     price: Optional[str] = Field(None)
     source: Optional[str] = Field(None)
 
@@ -119,33 +122,35 @@ Latest message:
 def search_node(state: AgentState) -> AgentState:
     planner = state["planner"]
 
-    # -----------------------------
-    # Build search query
-    # -----------------------------
-    query = f"""
-    {planner["product_name"]}
+    all_results = []
 
-    Categories:
-    {", ".join(planner["categories"])}
+    # Search separately for EACH product, so one product doesn't drown out the others
+    for product_name in planner["product_name"]:
 
-    Budget:
-    {planner["budget"]}
+        # -----------------------------
+        # Build search query for this one product
+        # -----------------------------
+        query = f"""
+        {product_name}
 
-    Find products for purchase.
-    """
+        Budget:
+        {planner["budget"]}
 
-    # -----------------------------
-    # Search Tavily
-    # -----------------------------
-    tavily_results = search_tool.invoke(query)
+        Find products for purchase.
+        """
 
-    # -----------------------------
-    # Convert search results into text
-    # -----------------------------
-    context = ""
+        # -----------------------------
+        # Search Tavily
+        # -----------------------------
+        tavily_results = search_tool.invoke(query)
 
-    for i, result in enumerate(tavily_results["results"], start=1):
-        context += f"""
+        # -----------------------------
+        # Convert search results into text
+        # -----------------------------
+        context = ""
+
+        for i, result in enumerate(tavily_results["results"], start=1):
+            context += f"""
 Product {i}
 
 Title:
@@ -159,17 +164,20 @@ Content:
 
 """
 
-    # -----------------------------
-    # Ask LLM to structure results
-    # -----------------------------
-    structured_search = model.with_structured_output(SearchOutput)
+        # -----------------------------
+        # Ask LLM to structure results for this product
+        # -----------------------------
+        structured_search = model.with_structured_output(SearchOutput)
 
-    search_output = structured_search.invoke([
-        SystemMessage(content=SEARCH_AGENT_PROMPT),
-        HumanMessage(
-            content=f"""
+        search_output = structured_search.invoke([
+            SystemMessage(content=SEARCH_AGENT_PROMPT),
+            HumanMessage(
+                content=f"""
 User request:
 {state["user_message"]}
+
+Product being searched:
+{product_name}
 
 Search Query:
 {query}
@@ -177,10 +185,12 @@ Search Query:
 Web Results:
 {context}
 """
-        )
-    ])
+            )
+        ])
 
-    state["search_results"] = search_output.model_dump()
+        all_results.append(search_output.model_dump())
+
+    state["search_results"] = all_results
 
     return state
 
@@ -253,11 +263,15 @@ def exceuter_node(state: AgentState) -> AgentState:
     state["final_answer"] = response.model_dump()
 
     # -----------------------------
-    # Append this turn to chat history so future turns have context
+    # Add this turn's new entries. Because chat_history uses an operator.add
+    # reducer, we must return ONLY the new items here (not the full accumulated
+    # list) — LangGraph will concatenate this with the existing/restored history
+    # automatically. Returning the full list here would double it up.
     # -----------------------------
-    state.setdefault("chat_history", [])
-    state["chat_history"].append({"role": "user", "content": state["user_message"]})
-    state["chat_history"].append({"role": "assistant", "content": state["final_answer"]["summary"]})
+    state["chat_history"] = [
+        {"role": "user", "content": state["user_message"]},
+        {"role": "assistant", "content": state["final_answer"]["summary"]},
+    ]
 
     return state
 
@@ -283,7 +297,7 @@ workflow.add_edge("executer", END)
 
 async def main():
     async with AsyncConnectionPool(
-        conninfo=postgres_url,
+        conninfo=postgres_uri,
         max_size=20,
         kwargs={"autocommit": True, "prepare_threshold": 0},
     ) as pool:
@@ -301,12 +315,11 @@ async def main():
         # One-shot example run (replace with a loop for real multi-turn use)
         initial_state = {
             "user_message": (
-        "I'm setting up a home office and home gym. I need: "
-        "a mechanical keyboard, a 27-inch 4K monitor, and a webcam for work; "
-        "a yoga mat and a pair of adjustable dumbbells for exercise; "
-        "and a standing desk. "
-        "My total budget is $2500."
-    ),
+                "I need an iPhone 16 Pro Max, "
+                "an electric treadmill, "
+                "and an ergonomic office chair. "
+                "My budget is $20000."
+            ),
             "chat_history": [],
             "planner": None,
             "search_results": [],

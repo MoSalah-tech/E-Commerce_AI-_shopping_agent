@@ -22,6 +22,11 @@ google-search-results # used for serpAPI which is better for shopping search on 
 # torchaudio == 2.5.1
 # nvidia-cuda-runtime-cu11  # Adjust version as needed
 
+
+#--- Database ---
+langgraph-checkpoint-postgres "psycopg[binary,pool]"
+
+
 # --- API Web Server Framework ---
 fastapi[all]==0.100.0            # FastAPI including standard dependencies (pydantic, email-validator, etc.)
 uvicorn                 # ASGI server to run the FastAPI app

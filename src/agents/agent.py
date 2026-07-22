@@ -13,7 +13,6 @@ from pydantic import BaseModel, Field
 from typing import Optional, TypedDict, Dict, Any, List, Annotated
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
-from Serpapi import shopping_search
 from langchain_tavily import TavilySearch
 from langgraph.graph import StateGraph, START, END
 
@@ -310,10 +309,10 @@ async def main():
 
         graph = workflow.compile(checkpointer=checkpointer)
 
-        config = {"configurable": {"thread_id": "test-run-001"}}
+        config = {"configurable": {"thread_id": "test-run-002"}}
 
         # One-shot example run (replace with a loop for real multi-turn use)
-        initial_state = {
+        state1 = await graph.ainvoke({
             "user_message": (
                 "I need an iPhone 16 Pro Max, "
                 "an electric treadmill, "
@@ -324,11 +323,22 @@ async def main():
             "planner": None,
             "search_results": [],
             "final_answer": None,
-        }
-
-        result = await graph.ainvoke(initial_state, config=config)
-        print(result["final_answer"])
-
+        }, config=config)
+        print(state1["final_answer"])
+ 
+        # TURN 2 — depends on remembering turn 1
+        state2 = await graph.ainvoke({
+            "user_message": (
+                "Actually drop the treadmill, and add a 27-inch 4K monitor instead. "
+                "Keep everything else the same."
+            ),
+            "chat_history": [],
+            "planner": None,
+            "search_results": [],
+            "final_answer": None,
+        }, config=config)
+        print(state2["final_answer"])
+    
         # Example of a true multi-turn interactive loop using the same thread_id:
         #
         # while True:

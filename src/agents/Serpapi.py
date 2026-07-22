@@ -1,25 +1,66 @@
-import os 
-from dotenv import load_dotenv
-from serpapi import GoogleSearch
+# import os 
+# from dotenv import load_dotenv
+# from serpapi import GoogleSearch
 
-load_dotenv()
+# load_dotenv()
 
 # __________________________SerpAPI search______________________
-serp_api = os.getenv("SERPAPI_API_KEY")
+from __future__ import annotations
+
+from typing import Any, Dict, Optional
+import requests
 
 
+class SerperClient:
+    BASE_URL = "https://google.serper.dev"
 
-def shopping_search(query: str):
+    def __init__(
+        self,
+        api_key: str,
+        gl: str = "eg",
+        timeout: int = 30,
+    ) -> None:
+        self.gl = gl
+        self.timeout = timeout
 
-    params = {
-        "engine": "google_shopping",
-        "q": query,
-        "api_key":serp_api,
-        "num": 5,
-    }
+        self.session = requests.Session()
+        self.session.headers.update(
+            {
+                "X-API-KEY": api_key,
+                "Content-Type": "application/json",
+            }
+        )
 
-    search = GoogleSearch(params)
+    def _post(self, endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+        response = self.session.post(
+            f"{self.BASE_URL}/{endpoint}",
+            json=payload,
+            timeout=self.timeout,
+        )
 
-    results = search.get_dict()
+        response.raise_for_status()
+        return response.json()
 
-    return results.get("shopping_results", [])
+    def shopping(
+        self,
+        query: str,
+        num: int = 10,
+        gl: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        payload = {
+            "q": query,
+            "gl": gl or self.gl,
+            "num": num,
+        }
+        return self._post("shopping", payload)
+
+
+if __name__ == "__main__":
+    client = SerperClient(api_key="fa7045fa906b84244f230518f29e1fd8fdf9f905")
+
+    result = client.shopping(
+        query="iPhone 16 Pro",
+        num=40,
+    )
+
+    print(result)

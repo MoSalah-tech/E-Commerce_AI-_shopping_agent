@@ -31,3 +31,4 @@ langgraph-checkpoint-postgres "psycopg[binary,pool]"
 fastapi[all]==0.100.0            # FastAPI including standard dependencies (pydantic, email-validator, etc.)
 uvicorn                 # ASGI server to run the FastAPI app
 python-dotenv
+requests 

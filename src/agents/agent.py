@@ -13,9 +13,8 @@ from pydantic import BaseModel, Field
 from typing import Optional, TypedDict, Dict, Any, List, Annotated
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
-from langchain_tavily import TavilySearch
 from langgraph.graph import StateGraph, START, END
-
+from Serpapi import SerperClient
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from psycopg_pool import AsyncConnectionPool
 
@@ -83,8 +82,9 @@ class ExecuterOutput(BaseModel):
 # __________________________ Agent Setup ______________________
 
 # __________________________ Tavily Search ______________________
-tools = [TavilySearch(max_results=5, api_key=os.getenv("TAVILY_API_KEY"))]
-search_tool = tools[0]
+# tools = [TavilySearch(max_results=5, api_key=os.getenv("TAVILY_API_KEY"))]
+# search_tool = tools[0]
+serper_client = SerperClient(api_key=os.getenv("SERPER_API_KEY"))
 
 
 model = ChatGroq(
@@ -120,135 +120,63 @@ Latest message:
 
 def search_node(state: AgentState) -> AgentState:
     planner = state["planner"]
-
+ 
     all_results = []
-
-    # Search separately for EACH product, so one product doesn't drown out the others
+ 
     for product_name in planner["product_name"]:
-
-        # -----------------------------
-        # Build search query for this one product
-        # -----------------------------
-        query = f"""
-        {product_name}
-
-        Budget:
-        {planner["budget"]}
-
-        Find products for purchase.
-        """
-
-        # -----------------------------
-        # Search Tavily
-        # -----------------------------
-        tavily_results = search_tool.invoke(query)
-
-        # -----------------------------
-        # Convert search results into text
-        # -----------------------------
-        context = ""
-
-        for i, result in enumerate(tavily_results["results"], start=1):
-            context += f"""
-Product {i}
-
-Title:
-{result.get("title")}
-
-URL:
-{result.get("url")}
-
-Content:
-{result.get("content")}
-
-"""
-
-        # -----------------------------
-        # Ask LLM to structure results for this product
-        # -----------------------------
-        structured_search = model.with_structured_output(SearchOutput)
-
-        search_output = structured_search.invoke([
-            SystemMessage(content=SEARCH_AGENT_PROMPT),
-            HumanMessage(
-                content=f"""
-User request:
-{state["user_message"]}
-
-Product being searched:
-{product_name}
-
-Search Query:
-{query}
-
-Web Results:
-{context}
-"""
+ 
+        try:
+            raw = serper_client.shopping(query=product_name, num=5)
+        except Exception as e:
+            # Don't let one failed product search take down the whole graph run
+            all_results.append(
+                SearchOutput(query=product_name, products=[]).model_dump()
             )
-        ])
-
-        all_results.append(search_output.model_dump())
-
+            continue
+ 
+        shopping_results = raw.get("shopping", [])[:2]
+ 
+        products = []
+        for item in shopping_results:
+            products.append(
+                Product(
+                    name=item.get("title", ""),
+                    price=item.get("price"),
+                    purchase_link=item.get("link"),
+                    source=item.get("source"),
+                    description=None,
+                )
+            )
+ 
+        all_results.append(
+            SearchOutput(
+                query=product_name,
+                products=products,
+            ).model_dump()
+        )
+ 
     state["search_results"] = all_results
-
+ 
     return state
 
 
-# _________________________ Search Node using SerpApi ____________________________
-
-# With SerpAPI, you already receive structured product data. The LLM would just be reformatting JSON, which is unnecessary.
-
-# def search_node(state: AgentState) -> AgentState:
-#
-#     planner = state["planner"]
-#
-#     all_results = []
-#
-#     for product in planner["product_name"]:
-#
-#         shopping_results = shopping_search(product)
-#
-#         products = []
-#
-#         for item in shopping_results:
-#
-#             products.append(
-#                 Product(
-#                     name=item.get("title", ""),
-#                     price=item.get("price"),
-#                     purchase_link=item.get("link", ""),
-#                     source=item.get("source"),
-#                     description=None
-#                 )
-#             )
-#
-#         all_results.append(
-#             SearchOutput(
-#                 query=product,
-#                 products=products
-#             ).model_dump()
-#         )
-#
-#     state["search_results"] = all_results
-#
-#     return state
 
 
 def exceuter_node(state: AgentState) -> AgentState:
-
+ 
     structured_executer = model.with_structured_output(ExecuterOutput)
-
+ 
     response = structured_executer.invoke([
-
+ 
         SystemMessage(content=EXECUTE_AGENT_PROMPT),
         HumanMessage(
             content=f"""
                 User Request:
                 {state["user_message"]}
-
+ 
                 Search Results:
                 {state["search_results"]}
-
+ 
                 Instructions:
                  - Recommend at least one product for each requested item if available.
                  - Use only the products in the shopping results.
@@ -260,7 +188,7 @@ def exceuter_node(state: AgentState) -> AgentState:
         )
     ])
     state["final_answer"] = response.model_dump()
-
+ 
     # -----------------------------
     # Add this turn's new entries. Because chat_history uses an operator.add
     # reducer, we must return ONLY the new items here (not the full accumulated
@@ -271,7 +199,7 @@ def exceuter_node(state: AgentState) -> AgentState:
         {"role": "user", "content": state["user_message"]},
         {"role": "assistant", "content": state["final_answer"]["summary"]},
     ]
-
+ 
     return state
 
 
@@ -309,35 +237,35 @@ async def main():
 
         graph = workflow.compile(checkpointer=checkpointer)
 
-        config = {"configurable": {"thread_id": "test-run-002"}}
+        config = {"configurable": {"thread_id": "test-run-003"}}
 
         # One-shot example run (replace with a loop for real multi-turn use)
-        state1 = await graph.ainvoke({
+        state = await graph.ainvoke({
             "user_message": (
                 "I need an iPhone 16 Pro Max, "
-                "an electric treadmill, "
-                "and an ergonomic office chair. "
-                "My budget is $20000."
+                "a samsung s25 phone , "
+                "a place where i can buy pizza . "
+                "My total budget is 100000."
             ),
             "chat_history": [],
             "planner": None,
             "search_results": [],
             "final_answer": None,
         }, config=config)
-        print(state1["final_answer"])
+        print(state["final_answer"])
  
         # TURN 2 — depends on remembering turn 1
-        state2 = await graph.ainvoke({
-            "user_message": (
-                "Actually drop the treadmill, and add a 27-inch 4K monitor instead. "
-                "Keep everything else the same."
-            ),
-            "chat_history": [],
-            "planner": None,
-            "search_results": [],
-            "final_answer": None,
-        }, config=config)
-        print(state2["final_answer"])
+        # state2 = await graph.ainvoke({
+        #     "user_message": (
+        #         "Actually drop the treadmill, and add a 27-inch 4K monitor instead. "
+        #         "Keep everything else the same."
+        #     ),
+        #     "chat_history": [],
+        #     "planner": None,
+        #     "search_results": [],
+        #     "final_answer": None,
+        # }, config=config)
+        # print(state2["final_answer"])
     
         # Example of a true multi-turn interactive loop using the same thread_id:
         #

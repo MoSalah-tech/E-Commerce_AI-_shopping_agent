@@ -1,3 +1,4 @@
+import time
 from langchain_groq import ChatGroq
 from langchain_core.messages import SystemMessage, HumanMessage
 from langgraph.graph import StateGraph, START, END
@@ -5,12 +6,26 @@ from langgraph.graph import StateGraph, START, END
 from app.core.config import *
 from app.agent.state import AgentState
 from app.agent.models import Planner, Product, SearchOutput, ExecuterOutput
-from app.agent.prompts import PLANNER_AGENT_PROMPT, SEARCH_AGENT_PROMPT, EXECUTE_AGENT_PROMPT
+from app.agent.prompts import PLANNER_AGENT_PROMPT,  EXECUTE_AGENT_PROMPT
 from app.tools.Serpapi import SerperClient
+from app.agent.budget import verify_and_annotate_budget,parse_amount
 
 
 
-
+def _shopping_with_retry(query: str, num: int, max_attempts: int = 3):
+    """Retries a transient Serper failure (timeout, momentary network/rate-limit
+    blip) with a short backoff before giving up — a single bad moment
+    shouldn't turn into a permanent "no products found" for the user."""
+    last_error = None
+    for attempt in range(1, max_attempts + 1):
+        try:
+            return serper_client.shopping(query=query, num=num)
+        except Exception as e:
+            last_error = e
+            print(f"[search_node] attempt {attempt}/{max_attempts} failed for '{query}': {e}")
+            if attempt < max_attempts:
+                time.sleep(2 ** (attempt - 1))  # 1s, 2s, 4s...
+    raise last_error
 
 
 serper_client = SerperClient()
@@ -67,7 +82,7 @@ def search_node(state: AgentState) -> AgentState:
     for product_name in planner["product_name"]:
 
         try:
-            raw = serper_client.shopping(query=product_name, num=2)
+            raw = _shopping_with_retry(query=product_name, num=2)
         except Exception as e:
             # Don't let one failed product search take down the whole graph run,
             # but DO surface what actually went wrong.
@@ -135,9 +150,12 @@ def exceuter_node(state: AgentState) -> AgentState:
     ])
     final_answer = response.model_dump()
 
-    # Return ONLY the keys this node changed: final_answer, and the two NEW
-    # chat_history entries (the reducer concatenates these with whatever's
-    # already there — do not include the old/unchanged history here).
+    # The LLM's own claim about whether recommendations fit the budget can be
+    # wrong (observed in testing: it once said a lower price "exceeded" a
+    # higher budget). Recompute the real total in Python and append a
+    # ground-truth verified note, rather than trusting the LLM's arithmetic.
+    planner = state.get("planner") or {}
+    final_answer = verify_and_annotate_budget(final_answer, planner.get("budget"))
     return {
         "final_answer": final_answer,
         "chat_history": [

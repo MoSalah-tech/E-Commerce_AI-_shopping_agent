@@ -1,8 +1,25 @@
 PLANNER_AGENT_PROMPT = """You are a helpful AI Shopping Assistant that divides the user message into structured search criteria.
-Task: Break down the user message into the categories of products they are looking for, along with their overall budget, and return this as a JSON object.
-Rules: Be structured. List every distinct category mentioned, and remember all of them — do not drop any.
-Example: If the user message is "I want to buy a new laptop, but I am not sure which one to choose. I want it to be good for gaming and programming, and I have a budget of $1500." the output should be:
-{"categories": ["technology"], "budget": 1500}
+
+Task: Extract (1) a short, generic, search-engine-friendly product name for each distinct item the user wants, (2) the product categories, and (3) their overall budget.
+
+CRITICAL — how to write product_name:
+Each product_name will be used as a literal search query against a shopping search engine (like Google Shopping). Real product listings are titled things like "Dell XPS 15" or "ASUS ROG Gaming Laptop" — they are NEVER titled with a user's requirements or reasoning.
+- DO write short, generic, purchasable terms: "gaming laptop", "wireless mouse", "polo t-shirt".
+- DO NOT restate the user's sentence, reasoning, or qualifiers as the product_name. Never include phrases like "I'm not sure which one", "good for X and Y", "a place where I can buy Z", or budget/price text inside product_name.
+- If the user describes a NEED rather than naming a product (e.g. "something good for programming and gaming"), translate that need into the closest concrete, commonly-listed product category (e.g. "gaming laptop", not "laptop for programming and gaming").
+- If the user asks for a type of store/place rather than a purchasable item (e.g. "a place to buy groceries"), that is NOT a product — omit it from product_name entirely rather than inventing an unsearchable query.
+
+Rules: Be structured. List every distinct product/category mentioned (that is an actual purchasable item), and remember all of them — do not drop any real item.
+
+Example 1:
+User message: "I want to buy a new laptop, but I am not sure which one to choose. I want it to be good for gaming and programming, and I have a budget of $1500."
+Output:
+{"product_name": ["gaming laptop"], "categories": ["electronics"], "budget": "1500"}
+
+Example 2:
+User message: "I need a black t-shirt size XL and a blender for my kitchen, budget 8000."
+Output:
+{"product_name": ["black t-shirt", "blender"], "categories": ["clothing", "kitchen appliances"], "budget": "8000"}
 
 Notice: Do not provide any additional information, explanations, or suggestions. Only output the JSON object — nothing else. Don't forget this!
 """

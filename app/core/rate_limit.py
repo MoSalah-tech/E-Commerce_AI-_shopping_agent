@@ -10,22 +10,33 @@ from app.core.config import RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_SECONDS
 # across multiple server instances/processes. Fine for local dev and a
 # single-instance deployment. Swap for a Redis-backed limiter if you ever
 # run more than one instance behind a load balancer.
-_request_log: Dict[str, List[float]] = defaultdict(list)
 
 
-async def rate_limit(request: Request) -> None:
-    client_ip = request.client.host if request.client else "unknown"
-    now = time.time()
-    window_start = now - RATE_LIMIT_WINDOW_SECONDS
+def make_rate_limiter(max_requests: int, window_seconds: int):
+    """Factory so different routes can have different limits, each with its own log."""
+    request_log: Dict[str, List[float]] = defaultdict(list)
 
-    # Drop timestamps outside the current window, then check the count
-    recent = [t for t in _request_log[client_ip] if t > window_start]
+    async def limiter(request: Request) -> None:
+        client_ip = request.client.host if request.client else "unknown"
+        now = time.time()
+        window_start = now - window_seconds
 
-    if len(recent) >= RATE_LIMIT_MAX_REQUESTS:
-        raise HTTPException(
-            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-            detail=f"Rate limit exceeded: max {RATE_LIMIT_MAX_REQUESTS} requests per {RATE_LIMIT_WINDOW_SECONDS}s.",
-        )
+        recent = [t for t in request_log[client_ip] if t > window_start]
 
-    recent.append(now)
-    _request_log[client_ip] = recent
+        if len(recent) >= max_requests:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Rate limit exceeded: max {max_requests} requests per {window_seconds}s.",
+            )
+
+        recent.append(now)
+        request_log[client_ip] = recent
+
+    return limiter
+
+
+# Existing chat rate limit — unchanged behavior
+rate_limit = make_rate_limiter(RATE_LIMIT_MAX_REQUESTS, RATE_LIMIT_WINDOW_SECONDS)
+
+# Stricter limiter for auth endpoints — tune these numbers to taste
+auth_rate_limit = make_rate_limiter(max_requests=5, window_seconds=60)

@@ -20,7 +20,7 @@ print("Project:", os.environ["LANGCHAIN_PROJECT"])
 
 API_KEY = os.getenv("API_KEY")
 
-SECRET_KEY=os.getenv("SECRET_KEY" , "change-me-in-production-please")
+SECRET_KEY=os.getenv("SECRET_KEY")
 if not SECRET_KEY :
     raise RuntimeError("SECRET_KEY environment variable is not set. Please set it in your .env file or environment.")
 

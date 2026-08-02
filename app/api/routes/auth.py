@@ -7,6 +7,7 @@ from app.auth.security import verify_password, hash_password
 from app.core.config import ACCESS_TOKEN_EXPIRE_MINUTES
 from app.auth.models import UserCreate
 from app.core.database import get_pool
+from app.core.rate_limit import auth_rate_limit
 
 router = APIRouter()
 
@@ -18,7 +19,7 @@ class LoginForm:
         self.password = password
 
 
-@router.post("/register", status_code=201)
+@router.post("/register", status_code=201, dependencies=[Depends(auth_rate_limit)])
 async def register(user_data: UserCreate):
     """Create a new user (use from Swagger)."""
     async with get_pool().connection() as conn:
@@ -44,7 +45,7 @@ async def register(user_data: UserCreate):
     return {"message": f"User '{user_data.username}' created successfully"}
 
 
-@router.post("/token")
+@router.post("/token", dependencies=[Depends(auth_rate_limit)])
 async def login(form_data: LoginForm = Depends()):
     user = await get_user(form_data.username)
     if not user or not verify_password(form_data.password, user.hashed_password):

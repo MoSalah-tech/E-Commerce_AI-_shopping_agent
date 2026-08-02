@@ -10,6 +10,7 @@ async def init_pool():
     _pool = AsyncConnectionPool(
         conninfo=postgres_url,
         max_size=20,
+        open = False,
         kwargs={"autocommit": True, "prepare_threshold": 0 , "row_factory":psycopg.rows.dict_row},
     )
     await _pool.open()

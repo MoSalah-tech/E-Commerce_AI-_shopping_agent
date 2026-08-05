@@ -14,7 +14,7 @@ serper_api_key=os.getenv("SERPAPI_API_KEY")
 
 os.environ["LANGCHAIN_PROJECT"] = os.getenv("LANGCHAIN_PROJECT", "Agentic-AI-Proj")
 os.environ["LANGCHAIN_ENDPOINT"] = "https://api.smith.langchain.com"
-print("Tracing:", os.environ["LANGCHAIN_TRACING_V2"])
+print("Tracing:", os.environ["LANGCHAIN_TRACING_V2","false"])
 print("Project:", os.environ["LANGCHAIN_PROJECT"])
 
 

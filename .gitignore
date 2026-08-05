@@ -1,8 +1,6 @@
 __pycache__/
 .env
 .python-version
-pyproject.toml
-uv.lock
 .venv/
 *.pyc
 shopping-agent-frontend

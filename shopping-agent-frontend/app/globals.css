@@ -1,0 +1,95 @@
+@import "tailwindcss";
+
+:root {
+  --color-ink: #1c2321;
+  --color-ink-soft: #3a423f;
+  --color-paper: #f7f5f0;
+  --color-paper-raised: #ffffff;
+  --color-moss: #3f6c51;
+  --color-moss-deep: #2c4d39;
+  --color-rust: #c97d3c;
+  --color-hairline: #d8d3c7;
+  --color-danger: #af3e3e;
+
+  --font-display: "Fraunces", serif;
+  --font-body: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+  
+}
+[data-theme="dark"] {
+  --color-ink: #ede9e0;
+  --color-ink-soft: #a9b3ac;
+  --color-paper: #14171a;
+  --color-paper-raised: #1d2225;
+  --color-moss: #5fa57d;
+  --color-moss-deep: #7cc79a;
+  --color-rust: #e2984f;
+  --color-hairline: #33393c;
+  --color-danger: #e2726b;
+}
+
+html {
+  transition: background-color 0.15s ease;
+}
+
+@theme inline {
+  --color-ink: var(--color-ink);
+  --color-ink-soft: var(--color-ink-soft);
+  --color-paper: var(--color-paper);
+  --color-paper-raised: var(--color-paper-raised);
+  --color-moss: var(--color-moss);
+  --color-moss-deep: var(--color-moss-deep);
+  --color-rust: var(--color-rust);
+  --color-hairline: var(--color-hairline);
+  --color-danger: var(--color-danger);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body), sans-serif;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-moss);
+  outline-offset: 2px;
+}
+
+/* Torn / perforated edge for receipt-style cards -- the signature element */
+.ticket-edge {
+  position: relative;
+}
+
+.ticket-edge::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 10px;
+  background-image: radial-gradient(
+    circle at 8px 0,
+    transparent 6px,
+    var(--color-paper) 6.5px
+  );
+  background-size: 16px 10px;
+  background-repeat: repeat-x;
+}
+
+.dotted-rule {
+  border-bottom: 1px dashed var(--color-hairline);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

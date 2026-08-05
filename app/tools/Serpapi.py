@@ -12,9 +12,9 @@ class SerperClient:
         self,
         api_key: Optional[str] = None,
         gl: str = "eg",
+        hl: str = "ar",
         timeout: int = 30,
     ) -> None:
-        # Falls back to SERPER_API_KEY from .env if not passed explicitly
         resolved_key = api_key or os.getenv("SERPAPI_API_KEY")
         if not resolved_key:
             raise ValueError(
@@ -23,6 +23,7 @@ class SerperClient:
             )
 
         self.gl = gl
+        self.hl = hl
         self.timeout = timeout
 
         self.session = requests.Session()
@@ -47,10 +48,27 @@ class SerperClient:
         query: str,
         num: int,
         gl: Optional[str] = None,
+        hl: Optional[str] = None,
     ) -> Dict[str, Any]:
         payload = {
             "q": query,
             "gl": gl or self.gl,
+            "hl": hl or self.hl,
             "num": num,
         }
         return self._post("shopping", payload)
+
+    def search(
+        self,
+        query: str,
+        num: int,
+        gl: Optional[str] = None,
+        hl: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        payload = {
+            "q": query,
+            "gl": gl or self.gl,
+            "hl": hl or self.hl,
+            "num": num,
+        }
+        return self._post("search", payload)

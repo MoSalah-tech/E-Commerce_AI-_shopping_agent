@@ -7,4 +7,5 @@ env/
 .git/
 .gitignore
 README.md
+shopping-agent-frontend/
 node_modules/

@@ -8,17 +8,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python deps first (separate layer -- speeds up rebuilds when
-# only app code changes, since this layer gets cached).
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Install uv itself
+RUN pip install --no-cache-dir uv
+
+# Install deps first (separate layer -- cached unless pyproject.toml/uv.lock change)
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev
 
 # Now copy the rest of the app
-COPY . .
+COPY app ./app
 
-# Most container platforms (Render, Back4app, etc.) inject a PORT env var
-# and expect the app to bind to it -- default to 8000 for local testing.
 ENV PORT=8000
 EXPOSE 8000
 
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]
+CMD ["sh", "-c", "uv run uvicorn app.main:app --host 0.0.0.0 --port ${PORT}"]

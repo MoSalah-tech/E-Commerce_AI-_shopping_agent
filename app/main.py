@@ -25,10 +25,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Shopping Agent API", lifespan=lifespan)
 
+origins = [
+    "http://localhost:3000",
+    "https://front-shopping-agent.vercel.app",
+]
+
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["https://front-shopping-agent.vercel.app/"],  # Adjust this to your frontend's origin in production
+    allow_origins=origins,  # Adjust this to your frontend's origin in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

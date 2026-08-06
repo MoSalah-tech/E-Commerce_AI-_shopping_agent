@@ -27,7 +27,7 @@ app = FastAPI(title="Shopping Agent API", lifespan=lifespan)
 
 origins = [
     "http://localhost:3000",
-    "https://front-shopping-agent.vercel.app",
+    "https://front-shopping-agent-pinvkfb3c-mosalah3.vercel.app/"
 ]
 
 

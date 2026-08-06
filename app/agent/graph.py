@@ -73,12 +73,14 @@ model = ChatGroq(
 def planner_node(state: AgentState) -> AgentState:
     structured_planner = model.with_structured_output(Planner)
 
-    MAX_HISTORY_MESSAGES = 10
+    MAX_HISTORY_MESSAGES = 10  # ~5 user/assistant turns
     recent_history = state.get("chat_history", [])[-MAX_HISTORY_MESSAGES:]
 
     history_text = "\n".join(
         f"{m['role']}: {m['content']}" for m in recent_history
     )
+
+    previous_plan = state.get("planner")
 
     plan_obj = structured_planner.invoke([
         SystemMessage(content=PLANNER_AGENT_PROMPT),
@@ -86,13 +88,14 @@ def planner_node(state: AgentState) -> AgentState:
 Conversation so far:
 {history_text}
 
+Previous plan (carry these forward unless the latest message clearly changes them):
+{previous_plan}
+
 Latest message:
 {state["user_message"]}
 """),
     ])
     return {"planner": plan_obj.model_dump()}
-
-
 # _________________________ Search Node ____________________________
 
 def search_node(state: AgentState) -> AgentState:

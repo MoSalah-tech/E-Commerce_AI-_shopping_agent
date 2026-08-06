@@ -13,9 +13,12 @@ async def run_agent(thread_id: str, user_message: str) -> Dict[str, Any]:
     input_state = {
         "user_message": user_message,
         "chat_history": [],
-        "planner": None,
-        "search_results": [],
-        "final_answer": None,
+        # NOTE: "planner", "search_results", "final_answer" are intentionally
+        # omitted here -- omitting a key lets LangGraph's checkpointer carry
+        # forward whatever was last saved for this thread_id, instead of
+        # wiping it back to None/empty on every single turn. This is what
+        # lets budget/products persist across messages without the user
+        # having to repeat themselves.
     }
 
     try:

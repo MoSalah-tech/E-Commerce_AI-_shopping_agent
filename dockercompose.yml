@@ -1,0 +1,26 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      PORT: "8000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./shopping-agent-frontend
+      dockerfile: Dockerfile
+      args:
+        # Browser-side fetches hit the host-exposed backend port, not the
+        # internal Docker network name, since this runs in the client.
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    restart: unless-stopped

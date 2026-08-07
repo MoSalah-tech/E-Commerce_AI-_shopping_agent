@@ -170,7 +170,7 @@ def exceuter_node(state: AgentState) -> AgentState:
                 {state["search_results"]}
 
                 Instructions:
-                 - Recommend at least one product for each requested item if available.
+                 - Recommend all the products for each requested item if available.
                  - Use only the products in the shopping results.
                  - Do not invent products.
                  - Some products may not have a listed price (price is null) --

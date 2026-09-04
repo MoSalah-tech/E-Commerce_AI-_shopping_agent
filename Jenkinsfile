@@ -18,7 +18,7 @@ pipeline {
             steps {
                 script {
                     dir('shopping-agent-frontend') {
-                        docker.build("${FRONTEND_IMAGE}:${TAG}", "--build-arg NEXT_PUBLIC_API_URL=http://localhost:8000 .")
+                        docker.build("${FRONTEND_IMAGE}:${TAG}", "-f frontend.Dockerfile --build-arg NEXT_PUBLIC_API_URL=http://localhost:8000 .")
                     }
                 }
             }

@@ -21,6 +21,7 @@ The system has three layers:
 3. **Frontend (Next.js)** — A responsive chat interface that communicates with the backend API.
 
 ### Agent Flow
+```text
 User Message
 │
 ▼
@@ -45,7 +46,7 @@ User Message
 │
 ▼
 Final Answer (recommendations + verified budget)
-
+```
 
 ## 🚀 Getting Started
 

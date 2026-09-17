@@ -11,6 +11,8 @@ An AI-powered shopping assistant that helps users find products to buy online. D
 - **JWT authentication** — Secure user sessions with token-based auth.
 - **Chat persistence** — Conversations are stored and retrieved via LangGraph checkpointer with Postgres.
 - **Modern web UI** — A Next.js frontend with a clean chat interface.
+- **CI/CD with Jenkins** – Automated Docker image builds and pushes to Docker Hub via a Jenkins pipeline.
+
 
 ## 🏗️ Architecture
 
@@ -149,6 +151,37 @@ Deployment	       Docker, Docker Compose, Jenkins
 └── LICENSE                       # MIT
 
 ```
+### 🔄 CI/CD with Jenkins
+This project uses Jenkins for continuous integration and delivery. The pipeline is defined in the Jenkinsfile at the repository root and uses the Docker Pipeline plugin.
+
+Pipeline Overview
+```text
+  GitHub Push / Manual Trigger
+          │
+          ▼
+   ┌─────────────────────┐
+   │ Build Backend Image │  docker.build
+   └─────────────────────┘
+          │
+          ▼
+   ┌──────────────────────┐
+   │ Build Frontend Image │  docker.build (with build arg)
+   └──────────────────────┘
+          │
+          ▼
+   ┌──────────────────────┐
+   │ Push to Docker Hub   │  docker.withRegistry
+   └──────────────────────┘
+
+```
+Configuration Notes
+- **Docker Hub user – Change DOCKER_HUB_USER to your own Docker Hub username if you fork the project**.
+
+- **Image tags – Images are tagged with the Jenkins BUILD_NUMBER for traceability**.
+
+- **Frontend build arg – NEXT_PUBLIC_API_URL is set to http://localhost:8000 for local development. Update this to your production API URL before deploying**.
+
+- **Credential ID – The pipeline expects a Jenkins credential with ID docker-hub-credentials containing your Docker Hub username and password/token**.
 
 ### 🔑 API Keys
 Service	Purpose	Free Tier

@@ -118,6 +118,7 @@ Run the full stack with Docker Compose:
 
 
 ### 🧰 Tech Stack
+```text
 Layer	Technology
 AI Framework	LangGraph, LangChain
 LLM	Groq (openai/gpt-oss-120b)
@@ -128,7 +129,7 @@ Auth	JWT (python-jose)
 Database	PostgreSQL
 Frontend	Next.js 14+, React, TypeScript
 Deployment	Docker, Docker Compose, Jenkins
-
+```
 
 ### 📁 Project Structure:
  ```text

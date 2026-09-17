@@ -119,16 +119,16 @@ Run the full stack with Docker Compose:
 
 ### 🧰 Tech Stack
 ```text
-Layer	Technology
+Layer	           Technology
 AI Framework	LangGraph, LangChain
-LLM	Groq (openai/gpt-oss-120b)
-Search	Serper API (Google Shopping + organic), Tavily
-Browser Automation	Playwright (Chromium)
-Backend	FastAPI, Pydantic, SQLAlchemy
-Auth	JWT (python-jose)
-Database	PostgreSQL
-Frontend	Next.js 14+, React, TypeScript
-Deployment	Docker, Docker Compose, Jenkins
+LLM	Groq       (openai/gpt-oss-120b)
+Search	       Serper API (Google Shopping + organic), Tavily
+Browser Automation	 Playwright (Chromium)
+Backend	           FastAPI, Pydantic, SQLAlchemy
+Auth	JWT          (python-jose)
+Database	          PostgreSQL
+Frontend	         Next.js 14+, React, TypeScript
+Deployment	       Docker, Docker Compose, Jenkins
 ```
 
 ### 📁 Project Structure:
